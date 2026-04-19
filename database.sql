@@ -8,7 +8,7 @@ drop table if exists public.profiles;
 -- Create Profiles Table (for RBAC)
 create table public.profiles (
     id uuid references auth.users on delete cascade primary key,
-    role text check (role in ('admin', 'manager', 'sales')) default 'sales',
+    role text check (role in ('owner', 'manager', 'karyawan')) default 'karyawan',
     full_name text,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -22,6 +22,7 @@ create table public.customers (
     company text,
     status text check (status in ('lead', 'prospect', 'customer')) default 'lead',
     lead_score integer default 0,
+    assigned_to uuid references public.profiles(id) on delete set null,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -43,6 +44,7 @@ create table public.tasks (
     due_date timestamp with time zone not null,
     status text check (status in ('todo', 'in_progress', 'done')) default 'todo',
     customer_id uuid references public.customers(id) on delete set null,
+    assigned_to uuid references public.profiles(id) on delete set null,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -83,3 +85,32 @@ insert into public.tasks (title, description, due_date, status) values
 
 insert into public.activity_logs (action, entity, details) values
 ('created', 'system', 'CRM System Initialized');
+-- Function to handle new user creation
+create or replace function public.handle_new_user()
+returns trigger as $$
+declare
+  user_count integer;
+  assigned_role text;
+begin
+  select count(*) from public.profiles into user_count;
+  
+  if user_count = 0 then
+    assigned_role := 'owner';
+  else
+    assigned_role := 'karyawan';
+  end if;
+
+  insert into public.profiles (id, full_name, role)
+  values (
+    new.id, 
+    new.raw_user_meta_data->>'full_name', 
+    assigned_role
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- Trigger for new user
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();

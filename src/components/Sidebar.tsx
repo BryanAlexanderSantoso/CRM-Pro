@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, ShoppingCart, LogOut, Command, CheckSquare } from 'lucide-react'
+import { LayoutDashboard, Users, ShoppingCart, LogOut, Command, CheckSquare, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -32,12 +32,21 @@ const routes = [
     href: '/tasks',
     color: 'text-primary',
   },
+  {
+    label: 'Team',
+    icon: ShieldCheck,
+    href: '/team',
+    color: 'text-primary',
+    adminOnly: true,
+  },
 ]
 
-export function Sidebar() {
+export function Sidebar({ role }: { role: string }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+
+  const filteredRoutes = routes.filter(route => !route.adminOnly || ['owner', 'manager'].includes(role))
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -56,7 +65,7 @@ export function Sidebar() {
           </h1>
         </Link>
         <div className="space-y-2">
-          {routes.map((route) => (
+          {filteredRoutes.map((route) => (
             <Link
               href={route.href}
               key={route.href}

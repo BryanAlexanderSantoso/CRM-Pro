@@ -15,7 +15,7 @@ export default function Home() {
           <Link href="/login" className="text-[13px] font-medium text-gray-500 hover:text-black transition-colors">
             Login
           </Link>
-          <Link href="/login" className="text-[13px] font-medium bg-black text-white px-5 py-2 rounded shadow-sm hover:bg-gray-800 transition-all">
+          <Link href="/register" className="text-[13px] font-medium bg-black text-white px-5 py-2 rounded shadow-sm hover:bg-gray-800 transition-all">
             Get Started
           </Link>
         </nav>
@@ -35,12 +35,12 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <Link href="/login" className="flex items-center justify-center px-10 py-4 text-sm font-semibold rounded bg-black text-white hover:bg-gray-800 transition-all">
+          <Link href="/register" className="flex items-center justify-center px-10 py-4 text-sm font-semibold rounded bg-black text-white hover:bg-gray-800 transition-all">
             Deploy your dashboard
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
           <Link href="/login" className="flex items-center justify-center px-10 py-4 text-sm font-semibold rounded border border-gray-200 hover:bg-gray-50 transition-all">
-            View Source
+            Sign In
           </Link>
         </div>
         

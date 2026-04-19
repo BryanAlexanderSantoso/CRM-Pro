@@ -1,13 +1,22 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient, getProfile } from '@/utils/supabase/server'
 import { TaskClient } from './TaskClient'
+import { redirect } from 'next/navigation'
 
 export default async function TasksPage() {
   const supabase = await createClient()
+  const profile = await getProfile()
   
-  const { data: tasks } = await supabase
+  let taskQuery = supabase
     .from('tasks')
     .select('*, customers(name)')
     .order('due_date', { ascending: true })
+
+  if (profile?.role === 'karyawan' || !profile) {
+    const userId = (await supabase.auth.getUser()).data.user?.id
+    if (userId) taskQuery = taskQuery.eq('assigned_to', userId)
+  }
+
+  const { data: tasks } = await taskQuery
 
   const { data: customers } = await supabase
     .from('customers')

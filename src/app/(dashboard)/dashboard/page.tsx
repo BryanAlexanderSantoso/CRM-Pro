@@ -3,13 +3,16 @@ import { Users, DollarSign, Activity, ArrowUpRight, TrendingUp } from 'lucide-re
 import { RevenueChart } from '@/components/RevenueChart'
 import { SalesFunnel } from '@/components/SalesFunnel'
 import { ActivityFeed } from '@/components/ActivityFeed'
-import { createClient } from '@/utils/supabase/server'
+import { createClient, getProfile } from '@/utils/supabase/server'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, Calendar } from 'lucide-react'
+import { redirect } from 'next/navigation'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
+  const profile = await getProfile()
+  const isKaryawan = !profile || profile.role === 'karyawan'
 
   // Fetch counts and data
   const { data: topLead } = await supabase
@@ -18,13 +21,24 @@ export default async function DashboardPage() {
     .order('lead_score', { ascending: false })
     .limit(1)
 
-  const { count: customersCount } = await supabase
+  let customerQuery = supabase
     .from('customers')
     .select('*', { count: 'exact', head: true })
 
-  const { data: salesData } = await supabase
+  let salesQuery = supabase
     .from('sales')
-    .select('amount, status, date')
+    .select('amount, status, date, customers!inner(assigned_to)')
+
+  if (isKaryawan) {
+    const userId = profile?.id || (await supabase.auth.getUser()).data.user?.id
+    if (userId) {
+      customerQuery = customerQuery.eq('assigned_to', userId)
+      salesQuery = salesQuery.eq('customers.assigned_to', userId)
+    }
+  }
+
+  const { count: customersCount } = await customerQuery
+  const { data: salesData } = await salesQuery
 
   const totalRevenue = salesData
     ?.filter(s => s.status === 'completed')
@@ -33,9 +47,16 @@ export default async function DashboardPage() {
   const activeCustomers = customersCount || 0
 
   // Process funnel data from real customers
-  const { data: funnelRaw } = await supabase
+  let funnelQuery = supabase
     .from('customers')
     .select('status')
+  
+  if (isKaryawan) {
+    const userId = profile?.id || (await supabase.auth.getUser()).data.user?.id
+    if (userId) funnelQuery = funnelQuery.eq('assigned_to', userId)
+  }
+
+  const { data: funnelRaw } = await funnelQuery
 
   const funnelData = [
     { name: 'Leads', value: funnelRaw?.filter(c => c.status === 'lead').length || 0 },
@@ -89,36 +110,37 @@ export default async function DashboardPage() {
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:-translate-y-1 hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <DollarSign className="h-4 w-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold tracking-tight">
-              {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalRevenue)}
-            </div>
-            <div className="flex items-center mt-1 text-xs text-emerald-500 font-medium">
-              <ArrowUpRight className="h-3 w-3 mr-1" />
-              +20.1% from last month
-            </div>
-          </CardContent>
-        </Card>
+        {!isKaryawan && (
+          <Card className="hover:-translate-y-1 hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold tracking-tight">
+                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalRevenue)}
+              </div>
+              <div className="flex items-center mt-1 text-xs text-emerald-500 font-medium">
+                <ArrowUpRight className="h-3 w-3 mr-1" />
+                +20.1% from last month
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         <Card className="hover:-translate-y-1 hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Customers</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Customers</CardTitle>
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
               <Users className="h-4 w-4 text-primary" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold tracking-tight">{activeCustomers}</div>
-            <div className="flex items-center mt-1 text-xs text-emerald-500 font-medium">
-              <ArrowUpRight className="h-3 w-3 mr-1" />
-              +180 new customers
+            <div className="flex items-center mt-1 text-xs text-muted-foreground font-medium">
+              {isKaryawan ? 'Assigned to you' : 'Across organization'}
             </div>
           </CardContent>
         </Card>
@@ -140,27 +162,29 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="hover:-translate-y-1 hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm lg:col-span-3">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Revenue Target</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end justify-between mb-2">
-              <div className="text-2xl font-bold tracking-tight">
-                {Math.round((totalRevenue / 500000000) * 100)}%
+        {!isKaryawan && (
+          <Card className="hover:-translate-y-1 hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm lg:col-span-3">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Revenue Target</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end justify-between mb-2">
+                <div className="text-2xl font-bold tracking-tight">
+                  {Math.round((totalRevenue / 500000000) * 100)}%
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Target: Rp500.000.000
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                Target: Rp500.000.000
+              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-black transition-all duration-1000" 
+                  style={{ width: `${Math.min((totalRevenue / 500000000) * 100, 100)}%` }} 
+                />
               </div>
-            </div>
-            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-black transition-all duration-1000" 
-                style={{ width: `${Math.min((totalRevenue / 500000000) * 100, 100)}%` }} 
-              />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">

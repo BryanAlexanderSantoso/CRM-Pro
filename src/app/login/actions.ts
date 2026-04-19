@@ -8,7 +8,7 @@ export async function login(formData: FormData) {
   const supabase = await createClient()
 
   const data = {
-    email: formData.get('email') as string,
+    email: (formData.get('email') as string)?.trim(),
     password: formData.get('password') as string,
   }
 

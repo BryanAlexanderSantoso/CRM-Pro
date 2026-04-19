@@ -12,7 +12,7 @@ import { deleteCustomer } from './actions'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-export function CustomerClient({ customers }: { customers: any[] }) {
+export function CustomerClient({ customers, employees, role }: { customers: any[], employees: any[], role: string }) {
   const [search, setSearch] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
@@ -160,6 +160,8 @@ export function CustomerClient({ customers }: { customers: any[] }) {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         customer={selectedCustomer} 
+        employees={employees}
+        role={role}
       />
     </div>
   )

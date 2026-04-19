@@ -13,15 +13,20 @@ import { createCustomer, updateCustomer } from './actions'
 export function CustomerFormModal({ 
   isOpen, 
   onClose, 
-  customer = null 
+  customer = null,
+  employees = [],
+  role = 'karyawan'
 }: { 
   isOpen: boolean, 
   onClose: () => void, 
-  customer?: any 
+  customer?: any,
+  employees?: any[],
+  role?: string
 }) {
   const [loading, setLoading] = useState(false)
   
   const isEditing = !!customer
+  const isAdmin = role === 'admin'
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -34,6 +39,7 @@ export function CustomerFormModal({
       phone: formData.get('phone'),
       company: formData.get('company'),
       status: formData.get('status'),
+      assigned_to: formData.get('assigned_to') || null,
     }
 
     try {
@@ -75,19 +81,42 @@ export function CustomerFormModal({
             <Label htmlFor="company">Company / Organization</Label>
             <Input id="company" name="company" defaultValue={customer?.company || ''} placeholder="Acme Inc." />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="status">Status</Label>
-            <Select name="status" defaultValue={customer?.status || 'lead'}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="lead">Lead</SelectItem>
-                <SelectItem value="prospect">Prospect</SelectItem>
-                <SelectItem value="customer">Customer</SelectItem>
-              </SelectContent>
-            </Select>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="status">Status</Label>
+              <Select name="status" defaultValue={customer?.status || 'lead'}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lead">Lead</SelectItem>
+                  <SelectItem value="prospect">Prospect</SelectItem>
+                  <SelectItem value="customer">Customer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isAdmin && (
+              <div className="grid gap-2">
+                <Label htmlFor="assigned_to">Assign To</Label>
+                <Select name="assigned_to" defaultValue={customer?.assigned_to || ''}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Unassigned</SelectItem>
+                    {employees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.full_name || 'Anonymous'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
+
           <div className="flex justify-end gap-3 mt-4">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancel
