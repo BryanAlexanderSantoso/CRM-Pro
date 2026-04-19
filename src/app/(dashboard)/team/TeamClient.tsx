@@ -55,6 +55,7 @@ export function TeamClient({ employees, stats, userRole }: { employees: any[], s
           </Card>
         )
       })}
+      </div>
     </div>
   )
 }

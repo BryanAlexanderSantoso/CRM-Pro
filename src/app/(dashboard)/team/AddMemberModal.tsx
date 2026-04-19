@@ -38,12 +38,12 @@ export function AddMemberModal({ userRole }: { userRole: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger render={
         <Button className="bg-black hover:bg-gray-900 text-white rounded-none gap-2 text-xs font-bold uppercase tracking-widest px-6 h-11">
           <UserPlus className="w-4 h-4" />
           Add Team Member
         </Button>
-      </DialogTrigger>
+      } />
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Member</DialogTitle>
